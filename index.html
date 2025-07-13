@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Deep Research</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Marked.js to render Markdown from Gemini -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Lucide Icons for UI elements -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for a cleaner look */
+        #chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        #chat-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        #chat-container::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 3px;
+        }
+        #chat-container::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        .api-key-input {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid #cbd5e1;
+            background-color: #f8fafc;
+        }
+        .api-key-input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 2px #c7d2fe;
+        }
+        /* Styling for Markdown content */
+        .prose p { margin-bottom: 1rem; }
+        .prose ul { list-style-position: inside; }
+        .prose li { margin-bottom: 0.5rem; }
+        .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { margin-top: 1.5rem; margin-bottom: 1rem; font-weight: 600; }
+        .prose h1 { font-size: 1.875rem; }
+        .prose h2 { font-size: 1.5rem; }
+        .prose h3 { font-size: 1.25rem; }
+        .prose code { background-color: #e2e8f0; padding: 0.2em 0.4em; border-radius: 0.25rem; font-size: 0.875em; }
+        .prose pre { background-color: #1e293b; color: #f8fafc; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+        .prose a { color: #4f46e5; text-decoration: underline; }
+
+
+        /* CSS for the loading spinner */
+        .loader {
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #4f46e5;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex flex-col h-screen antialiased">
+
+    <div class="max-w-4xl w-full mx-auto p-4 flex-grow flex flex-col">
+        <!-- Header and API Key Section -->
+        <div class="bg-white p-4 rounded-xl shadow-md mb-4 border border-slate-200">
+            <div class="flex items-center justify-between mb-4">
+                <h1 class="text-2xl font-bold text-slate-800">Deep Research Engine</h1>
+                <div class="flex items-center gap-3">
+                    <!-- Research Mode Selector -->
+                    <div class="relative">
+                        <select id="research-mode-select" class="block appearance-none w-full bg-white border border-slate-300 text-slate-700 py-2 px-3 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-indigo-500">
+                            <option value="limited">Limited (Chỉ Snippet)</option>
+                            <option value="unlimited">Unlimited (Tìm kiếm mở rộng)</option>
+                            <option value="backend">Back-end (Crawl sâu)</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-700">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 6.757 7.586 5.343 9z"/></svg>
+                        </div>
+                    </div>
+                    <button id="toggle-keys-btn" class="text-slate-500 hover:text-slate-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-key-round"><path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z"/><circle cx="16.5" cy="7.5" r=".5"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="api-keys-section" class="mt-4 space-y-3 hidden">
+                <div>
+                    <label for="gemini-api-key" class="text-sm font-medium text-slate-600">Gemini Flash API Key</label>
+                    <input type="password" id="gemini-api-key" class="api-key-input" placeholder="Nhập Gemini API Key của bạn">
+                </div>
+                <div>
+                    <label for="google-api-key" class="text-sm font-medium text-slate-600">Google Search API Key</label>
+                    <input type="password" id="google-api-key" class="api-key-input" placeholder="Nhập Google Search API Key của bạn">
+                </div>
+                <div>
+                    <label for="google-cx" class="text-sm font-medium text-slate-600">Google Search Engine ID (CX)</label>
+                    <input type="text" id="google-cx" class="api-key-input" placeholder="Nhập Search Engine ID (CX) của bạn">
+                </div>
+                <p class="text-xs text-slate-500">API Keys được lưu trữ trong trình duyệt và không được gửi đi bất cứ đâu ngoại trừ các API của Google.</p>
+            </div>
+        </div>
+
+        <!-- Chat Container -->
+        <div id="chat-container" class="flex-grow bg-white rounded-xl shadow-md p-6 overflow-y-auto border border-slate-200">
+            <!-- Messages will be appended here -->
+            <div class="flex items-start gap-3">
+                <div class="bg-indigo-600 p-2 rounded-full flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bot"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                </div>
+                <div class="bg-slate-100 text-slate-800 rounded-lg p-3 max-w-full">
+                    <p class="font-semibold mb-2">Xin chào! Tôi có thể giúp gì cho bạn?</p>
+                    <p class="text-sm">Vui lòng nhập API keys của bạn bằng cách nhấn vào biểu tượng chìa khóa ở trên. Sau đó, hãy đặt một câu hỏi phức tạp để tôi có thể tiến hành nghiên cứu.</p>
+                    <p class="text-sm mt-2">Chọn chế độ nghiên cứu mong muốn (mặc định là "Limited").</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Form -->
+        <div class="mt-4">
+            <form id="chat-form" class="flex items-center gap-3">
+                <input type="text" id="chat-input" class="flex-grow p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition" placeholder="Đặt một câu hỏi phức tạp..." autocomplete="off">
+                <button type="submit" id="send-button" class="bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition disabled:bg-indigo-300 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
+        const chatContainer = document.getElementById('chat-container');
+        
+        const geminiApiKeyInput = document.getElementById('gemini-api-key');
+        const googleApiKeyInput = document.getElementById('google-api-key');
+        const googleCxInput = document.getElementById('google-cx');
+        const toggleKeysBtn = document.getElementById('toggle-keys-btn');
+        const apiKeysSection = document.getElementById('api-keys-section');
+        const researchModeSelect = document.getElementById('research-mode-select');
+
+        // Load keys from localStorage if they exist
+        geminiApiKeyInput.value = localStorage.getItem('geminiApiKey') || '';
+        googleApiKeyInput.value = localStorage.getItem('googleApiKey') || '';
+        googleCxInput.value = localStorage.getItem('googleCx') || '';
+        researchModeSelect.value = localStorage.getItem('researchMode') || 'limited'; // Load selected mode
+
+        // Save keys and mode to localStorage on change
+        geminiApiKeyInput.addEventListener('input', () => localStorage.setItem('geminiApiKey', geminiApiKeyInput.value));
+        googleApiKeyInput.addEventListener('input', () => localStorage.setItem('googleApiKey', googleApiKeyInput.value));
+        googleCxInput.addEventListener('input', () => localStorage.setItem('googleCx', googleCxInput.value));
+        researchModeSelect.addEventListener('change', () => localStorage.setItem('researchMode', researchModeSelect.value));
+
+        toggleKeysBtn.addEventListener('click', () => {
+            apiKeysSection.classList.toggle('hidden');
+        });
+
+        // Function to get yesterday's date in Vietnamese format
+        function getYesterdayDateInVietnamese() {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1); // Subtract 1 day to get yesterday
+            
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const formatter = new Intl.DateTimeFormat('vi-VN', options);
+            let dateString = formatter.format(yesterday);
+
+            // Capitalize the first letter of the weekday (e.g., "thứ hai" -> "Thứ hai")
+            dateString = dateString.charAt(0).toUpperCase() + dateString.slice(1);
+
+            return dateString;
+        }
+
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userInput = chatInput.value.trim();
+            if (!userInput) return;
+
+            const geminiApiKey = geminiApiKeyInput.value;
+            const googleApiKey = googleApiKeyInput.value;
+            const googleCx = googleCxInput.value;
+            const selectedMode = researchModeSelect.value;
+
+            if (!geminiApiKey || !googleApiKey || !googleCx) {
+                renderMessage(
+                    `<p class="font-semibold text-red-600">Lỗi</p><p>Vui lòng cung cấp đầy đủ cả 3 API key ở trên để tiếp tục.</p>`, 
+                    'system_error'
+                );
+                return;
+            }
+
+            chatInput.value = '';
+            setLoadingState(true);
+            renderMessage(userInput, 'user');
+
+            try {
+                const yesterdayDate = getYesterdayDateInVietnamese(); // Get yesterday's date
+
+                // --- STEP 1: DECOMPOSE QUESTION ---
+                const thinkingMessage = renderMessage('', 'system_thinking', true);
+                updateMessage(thinkingMessage, `
+                    <div class="flex items-center gap-2">
+                        <div class="loader"></div>
+                        <span>Đang phân tích câu hỏi và lập kế hoạch tìm kiếm (${selectedMode === 'backend' ? 'chế độ Back-end' : 'chế độ Non-Back-end'})...</span>
+                    </div>
+                `);
+
+                // Prompt để yêu cầu Gemini phân rã câu hỏi một cách tổng quát hơn
+                const decompositionPrompt = `
+                    Bạn là một trợ lý nghiên cứu chuyên nghiệp. Nhiệm vụ của bạn là phân tích câu hỏi của người dùng và tạo ra 3 đến 5 truy vấn tìm kiếm Google đơn giản, hiệu quả để thu thập thông tin cần thiết nhằm cung cấp một câu trả lời toàn diện.
+                    Câu hỏi của người dùng bằng tiếng Việt. Các truy vấn tìm kiếm của bạn cũng phải bằng tiếng Việt.
+                    Nếu câu hỏi của người dùng liên quan đến một khung thời gian cụ thể (ví dụ: "hôm qua", "tuần trước", "năm 2023"), hãy sử dụng thông tin về ngày tháng đó trong các truy vấn của bạn.
+                    Ngày hôm qua là: "${yesterdayDate}".
+                    Trả về CHỈ một đối tượng JSON hợp lệ với một khóa duy nhất "queries" là một mảng các chuỗi. Không thêm bất kỳ văn bản hoặc giải thích nào khác.
+
+                    Câu hỏi của người dùng: "${userInput}"
+                `;
+
+                const searchQueriesResponse = await callGemini(decompositionPrompt, geminiApiKey, true);
+                const searchQueries = searchQueriesResponse.queries;
+                
+                let queriesHtml = searchQueries.map(q => `<li><code class="bg-slate-200 px-1 py-0.5 rounded">${q}</code></li>`).join('');
+                updateMessage(thinkingMessage, `
+                    <p class="font-semibold mb-2">Kế hoạch nghiên cứu:</p>
+                    <p>Để trả lời câu hỏi của bạn, tôi sẽ tìm kiếm các chủ đề sau:</p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">${queriesHtml}</ul>
+                `);
+
+
+                // --- STEP 2: EXECUTE WEB SEARCHES / CRAWL ---
+                const searchingMessage = renderMessage('', 'system_searching', true);
+                updateMessage(searchingMessage, `
+                    <div class="flex items-center gap-2">
+                        <div class="loader"></div>
+                        <span>Đang tìm kiếm/crawl thông tin trên web...</span>
+                    </div>
+                `);
+                
+                let searchResults = [];
+                if (selectedMode === 'backend') {
+                    // Backend mode: Get URLs from Google Search, then crawl each URL
+                    let crawledContents = [];
+                    for (const query of searchQueries) {
+                        updateMessage(searchingMessage, `
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="search" class="w-4 h-4 text-slate-500"></i>
+                                <span>Tìm kiếm URL cho: "${query}"</span>
+                            </div>
+                        `);
+                        const googleResults = await callGoogleSearch(query, googleApiKey, googleCx);
+                        if (googleResults && googleResults.items) {
+                            const urlsToCrawl = googleResults.items.slice(0, 3).map(item => item.link); // Limit URLs to crawl
+                            for (const url of urlsToCrawl) {
+                                updateMessage(searchingMessage, `
+                                    <div class="flex items-center gap-2">
+                                        <i data-lucide="globe" class="w-4 h-4 text-slate-500"></i>
+                                        <span>Đang crawl: <a href="${url}" target="_blank" class="text-indigo-600 hover:underline">${url.substring(0, 50)}...</a></span>
+                                    </div>
+                                `);
+                                const crawledData = await callBackendCrawl(url);
+                                if (crawledData && crawledData.content) {
+                                    // Summarize crawled content before adding to results
+                                    const summaryPrompt = `
+                                        Bạn là một trợ lý nghiên cứu AI. Nhiệm vụ của bạn là đọc nội dung của một trang web và đánh giá nhanh mức độ liên quan của nó đối với một câu hỏi nghiên cứu cụ thể.
+                                        Trả về CHỈ một đoạn văn ngắn (tối đa 2-3 câu) tóm tắt nội dung chính của trang và nhận định liệu nó có chứa thông tin hữu ích để trả lời câu hỏi gốc hay không.
+                                        Nếu trang không liên quan, hãy nêu rõ điều đó.
+                                        
+                                        Câu hỏi gốc: "${userInput}"
+                                        Truy vấn tìm kiếm dẫn đến trang này: "${query}"
+                                        Nội dung trang web:
+                                        """
+                                        ${crawledData.content}
+                                        """
+                                    `;
+                                    const pageSummary = await callGemini(summaryPrompt, geminiApiKey, false);
+                                    renderMessage(`
+                                        <p class="font-semibold mb-1">Nhận định về trang:</p>
+                                        <p class="text-sm">${pageSummary}</p>
+                                        <p class="text-xs text-slate-500 mt-1">Nguồn: <a href="${url}" target="_blank" class="text-indigo-600 hover:underline">${url}</a></p>
+                                    `, 'system_thinking'); // Using system_thinking for intermediate insights
+
+                                    crawledContents.push({
+                                        url: url,
+                                        content: crawledData.content
+                                    });
+                                } else {
+                                    renderMessage(`
+                                        <p class="font-semibold text-red-600">Lỗi crawl:</p>
+                                        <p class="text-sm">Không thể crawl nội dung từ <a href="${url}" target="_blank" class="text-indigo-600 hover:underline">${url.substring(0, 50)}...</a>. Lỗi: ${crawledData.error || 'Unknown error'}</p>
+                                    `, 'system_error');
+                                    console.warn(`Không thể crawl URL: ${url}. Lỗi: ${crawledData.error || 'Unknown error'}`);
+                                }
+                                await new Promise(resolve => setTimeout(resolve, 500)); // Small delay
+                            }
+                        }
+                    }
+                    // Combine crawled content into searchResults format for synthesis
+                    searchResults = crawledContents.map(c => ({
+                        title: `Nội dung từ: ${c.url}`,
+                        link: c.url,
+                        snippet: c.content // Use full content as snippet for synthesis
+                    }));
+
+                } else {
+                    // Limited/Unlimited mode: Use Google Custom Search API for snippets
+                    for (const query of searchQueries) {
+                        updateMessage(searchingMessage, `
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="search" class="w-4 h-4 text-slate-500"></i>
+                                <span>Đang tìm: "${query}"</span>
+                            </div>
+                        `);
+                        const results = await callGoogleSearch(query, googleApiKey, googleCx);
+                        if (results && results.items) {
+                            // Limit to top 3 snippets per query to keep context size manageable for Gemini Flash
+                            const snippets = results.items.slice(0, 3).map(item => ({
+                                title: item.title,
+                                link: item.link,
+                                snippet: item.snippet
+                            }));
+                            searchResults.push(...snippets);
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 200)); // Small delay to avoid hitting rate limits
+                    }
+                }
+
+                updateMessage(searchingMessage, `
+                    <div class="flex items-center gap-2 text-green-600">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        <span>Đã thu thập xong thông tin.</span>
+                    </div>
+                `);
+
+                // --- STEP 3: SYNTHESIZE AND ANSWER ---
+                const synthesizingMessage = renderMessage('', 'system_synthesizing', true);
+                updateMessage(synthesizingMessage, `
+                    <div class="flex items-center gap-2">
+                        <div class="loader"></div>
+                        <span>Đang tổng hợp câu trả lời...</span>
+                    </div>
+                `);
+
+                const context = searchResults.map(r => `Tiêu đề: ${r.title}\nĐoạn trích: ${r.snippet}\nNguồn: ${r.link}`).join('\n\n---\n\n');
+                
+                // Prompt cuối cùng để tạo ra câu trả lời một cách tổng quát
+                const synthesisPrompt = `
+                    Bạn là một trợ lý nghiên cứu AI chuyên nghiệp. Nhiệm vụ của bạn là trả lời câu hỏi gốc của người dùng bằng tiếng Việt dựa *duy nhất* trên các kết quả tìm kiếm được cung cấp (CONTEXT).
+                    
+                    Thực hiện theo các hướng dẫn sau một cách cẩn thận:
+                    1.  Cung cấp một câu trả lời toàn diện, có cấu trúc tốt và chi tiết.
+                    2.  Toàn bộ phản hồi của bạn PHẢI bằng tiếng Việt.
+                    3.  Cấu trúc câu trả lời của bạn bằng cách sử dụng Markdown để dễ đọc (tiêu đề, chữ in đậm, danh sách).
+                    4.  Nếu câu hỏi của người dùng liên quan đến một ngày cụ thể (ví dụ: "hôm qua"), hãy đảm bảo đề cập đến ngày đó trong câu trả lời nếu thông tin có sẵn. Ngày hôm qua là: "${yesterdayDate}".
+                    5.  Nếu ngữ cảnh không đủ để trả lời câu hỏi một cách đầy đủ hoặc tìm thấy thông tin cụ thể được yêu cầu, hãy nêu rõ rằng bạn không thể tìm thấy đủ thông tin trong các nguồn được cung cấp. Không tạo ra thông tin.
+                    6.  KHÔNG sử dụng bất kỳ thông tin nào ngoài CONTEXT được cung cấp.
+                    7.  Không đề cập rằng bạn đang dựa câu trả lời của mình vào ngữ cảnh được cung cấp. Chỉ cần trả lời trực tiếp câu hỏi.
+
+                    CONTEXT:
+                    """
+                    ${context}
+                    """
+
+                    Câu hỏi gốc của người dùng: "${userInput}"
+                `;
+
+                const finalAnswer = await callGemini(synthesisPrompt, geminiApiKey, false);
+                
+                // Render Markdown to HTML
+                const formattedAnswer = marked.parse(finalAnswer);
+                updateMessage(synthesizingMessage, `<div class="prose max-w-none">${formattedAnswer}</div>`);
+
+            } catch (error) {
+                console.error("An error occurred:", error);
+                renderMessage(
+                    `<p class="font-semibold text-red-600">Đã xảy ra lỗi</p><p>${error.message}. Vui lòng kiểm tra lại API keys và bảng điều khiển (console) để biết thêm chi tiết.</p>`,
+                    'system_error'
+                );
+            } finally {
+                setLoadingState(false);
+            }
+        });
+
+        function setLoadingState(isLoading) {
+            chatInput.disabled = isLoading;
+            sendButton.disabled = isLoading;
+            researchModeSelect.disabled = isLoading; // Disable mode selection during processing
+            if (isLoading) {
+                sendButton.innerHTML = `<div class="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>`;
+            } else {
+                sendButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>`;
+            }
+        }
+
+        function renderMessage(content, sender, isDynamic = false) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = 'flex items-start gap-3 mb-4';
+
+            // Create a div for the icon and set its innerHTML
+            const iconDiv = document.createElement('div');
+            let contentBg = 'bg-slate-100';
+            let contentTextColor = 'text-slate-800';
+
+            switch (sender) {
+                case 'user':
+                    iconDiv.className = "bg-slate-600 p-2 rounded-full flex-shrink-0";
+                    iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+                    contentBg = 'bg-indigo-600';
+                    contentTextColor = 'text-white';
+                    messageWrapper.classList.add('justify-end');
+                    break;
+                case 'system_error':
+                    iconDiv.className = "bg-red-500 p-2 rounded-full flex-shrink-0";
+                    iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>`;
+                    contentBg = 'bg-red-100';
+                    contentTextColor = 'text-red-800';
+                    break;
+                default: // system messages
+                    iconDiv.className = "bg-indigo-600 p-2 rounded-full flex-shrink-0";
+                    iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bot"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>`;
+                    break;
+            }
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = `rounded-lg p-3 max-w-full ${contentBg} ${contentTextColor}`;
+            contentDiv.innerHTML = sender === 'user' ? `<p>${content}</p>` : content;
+
+            if (sender === 'user') {
+                messageWrapper.appendChild(contentDiv);
+                messageWrapper.appendChild(iconDiv); // Append the iconDiv element
+            } else {
+                messageWrapper.appendChild(iconDiv); // Append the iconDiv element
+                messageWrapper.appendChild(contentDiv);
+            }
+
+            chatContainer.appendChild(messageWrapper);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Re-render icons if any were added
+            lucide.createIcons();
+
+            return isDynamic ? contentDiv : messageWrapper;
+        }
+
+        function updateMessage(messageElement, newContent) {
+            messageElement.innerHTML = newContent;
+            lucide.createIcons();
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        async function callGemini(prompt, apiKey, expectJson = false) {
+            const model = 'gemini-1.5-flash-latest';
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            
+            const requestBody = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: expectJson ? { responseMimeType: "application/json" } : {}
+            };
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Gemini API error: ${errorData.error.message}`);
+            }
+
+            const data = await response.json();
+            const text = data.candidates[0].content.parts[0].text;
+            return expectJson ? JSON.parse(text) : text;
+        }
+
+        async function callGoogleSearch(query, apiKey, cx) {
+            const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cx}&q=${encodeURIComponent(query)}`;
+            
+            const response = await fetch(url);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Google Search API error: ${errorData.error.message}`);
+            }
+            return response.json();
+        }
+
+        async function callBackendCrawl(urlToCrawl) {
+            // Địa chỉ của backend Flask của bạn. Đảm bảo nó đang chạy!
+            const backendUrl = 'http://localhost:5000/api/crawl_url'; 
+            
+            try {
+                const response = await fetch(backendUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: urlToCrawl })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Backend crawl error: ${errorData.error || response.statusText}`);
+                }
+                return response.json();
+            } catch (error) {
+                console.error("Lỗi khi gọi backend crawl:", error);
+                return { error: `Không thể kết nối đến backend hoặc lỗi crawl: ${error.message}` };
+            }
+        }
+
+        // Initial icon render
+        lucide.createIcons();
+    </script>
+</body>
+</html>

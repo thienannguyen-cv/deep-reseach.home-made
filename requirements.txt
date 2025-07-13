@@ -1,0 +1,8 @@
+Flask==3.0.3
+Flask-Cors==4.0.1
+selenium==4.22.0
+beautifulsoup4==4.12.3
+gunicorn==22.0.0
+gevent==22.10.2
+requests==2.31.0
+requests-html==0.10.0

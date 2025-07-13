@@ -1,0 +1,37 @@
+# render.yaml
+# Cấu hình dịch vụ web cho dự án Home-made Deep Research trên Render
+
+services:
+  - type: web
+    name: deep-research # Đặt tên cho dịch vụ web của bạn
+    env: python                  # Chỉ định môi trường là Python
+    region: singapore            # Chọn khu vực gần người dùng của bạn nhất (ví dụ: singapore, oregon, frankfurt)
+    plan: starter                # Chọn gói dịch vụ (starter, standard, pro)
+
+    # Thêm buildpack để cài đặt Google Chrome
+    # Đây là bước quan trọng để Selenium có thể tìm thấy trình duyệt
+    buildpacks:
+      - url: https://github.com/heroku/heroku-buildpack-google-chrome
+
+    # Lệnh build: Cài đặt các thư viện từ requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt
+
+    # Lệnh khởi động ứng dụng sử dụng Gunicorn với Gevent WebSocket Worker
+    # Đảm bảo rằng ứng dụng Flask của bạn có đối tượng `app` được định nghĩa
+    # và có thể truy cập được (ví dụ: `from app import app`)
+    startCommand: gunicorn -w 1 -k gevent -b 0.0.0.0:$PORT app:app --timeout 120
+
+    # Cổng mà ứng dụng của bạn sẽ lắng nghe. Render sẽ tự động inject biến môi trường PORT.
+    port: 5000 # Cổng mặc định của Flask, Render sẽ map cổng này.
+
+    # Biến môi trường
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: WEBSOCKET_URL # Một ví dụ biến môi trường nếu ứng dụng của bạn cần
+        value: ws://localhost:8000
+      # Thêm các biến môi trường khác cần thiết cho ứng dụng của bạn tại đây,
+      # ví dụ: API_KEY, DATABASE_URL, v.v.
+      # Lưu ý: Các API Key nhạy cảm nên được quản lý qua Render Environment Variables
+      # trong Dashboard UI thay vì đưa trực tiếp vào render.yaml để bảo mật tốt hơn.
