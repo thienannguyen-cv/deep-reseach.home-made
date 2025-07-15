@@ -93,12 +93,12 @@
         <!-- Header and API Key Section -->
         <div class="bg-white p-4 rounded-xl shadow-md mb-4 border border-slate-200">
             <div class="flex items-center justify-between mb-4">
-                <h1 class="text-2xl font-bold text-slate-800">Spining Research Bot</h1>
+                <h1 class="text-2xl font-bold text-slate-800">Deep Research Engine</h1>
                 <div class="flex items-center gap-3">
                     <!-- Research Mode Selector -->
                     <div class="relative">
                         <select id="research-mode-select" class="block appearance-none w-full bg-white border border-slate-300 text-slate-700 py-2 px-3 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-indigo-500">
-                            <option value="limited">Limited</option>
+                            <option value="limited">Limited (Tìm kiếm hạn chế)</option>
                             <option value="unlimited">Unlimited (Tìm kiếm mở rộng)</option>
                             <option value="backend">Back-end (Crawl sâu)</option>
                             <option value="quota">Quota (Dữ liệu Gemini)</option>
@@ -461,7 +461,7 @@
                                 console.warn(`Không thể trích xuất thông tin có cấu trúc từ kết quả Gemini: ${item.url}`);
                                 rawSearchResults.push({
                                     title: item.title,
-                                    link: item.url,
+                                    link: item.link,
                                     snippet: item.snippet,
                                     id: currentSourceId
                                 });
@@ -734,7 +734,7 @@
                             downloadButton.addEventListener('click', () => {
                                 let filename = `ket_qua_tong_hop_bang_${index + 1}.csv`;
                                 // Attempt to get a title from a preceding heading if available
-                                let prevSibling = JSON.parse(JSON.stringify(table.previousElementSibling));
+                                let prevSibling = table.previousElementSibling;
                                 while (prevSibling) {
                                     if (prevSibling.tagName.match(/^H[1-6]$/)) {
                                         // Sanitize filename: remove special characters and replace spaces with underscores
@@ -781,10 +781,19 @@
                 
             } catch (error) {
                 console.error("An error occurred:", error);
-                renderMessage(
-                    `<p class="font-semibold text-red-600">Đã xảy ra lỗi</p><p>${error.message}. Vui lòng kiểm tra lại API keys và bảng điều khiển (console) để biết thêm chi tiết.</p><p class="mt-2">Bạn có muốn chuyển sang chế độ "Quota" hoặc "Quota (Back-end)" để tiếp tục mà không cần API Key Google Search không? Vui lòng chọn một trong hai chế độ này từ danh sách thả xuống.</p>`,
-                    'system_error'
-                );
+                let errorMessage = `<p class="font-semibold text-red-600">Đã xảy ra lỗi</p><p>${error.message}. Vui lòng kiểm tra lại API keys và bảng điều khiển (console) để biết thêm chi tiết.</p>`;
+                
+                // Specific message for Gemini API unregistered callers
+                if (error.message.includes("Method doesn't allow unregistered callers")) {
+                    errorMessage += `<p class="mt-2">Lỗi này thường xảy ra khi Gemini API Key không được cung cấp hoặc không hợp lệ. Vui lòng thử nhập Gemini API Key của bạn vào ô trên.</p>`;
+                }
+
+                // General message for Google Search API keys if applicable
+                if (!googleApiKey || !googleCx) {
+                    errorMessage += `<p class="mt-2">Bạn có muốn chuyển sang chế độ "Quota" hoặc "Quota (Back-end)" để tiếp tục mà không cần API Key Google Search không? Vui lòng chọn một trong hai chế độ này từ danh sách thả xuống.</p>`;
+                }
+
+                renderMessage(errorMessage, 'system_error');
             } finally {
                 setLoadingState(false);
                 // Explicitly stop the spin for the bot icon associated with the last system message
@@ -919,7 +928,7 @@
                         while (prevSibling) {
                             if (prevSibling.tagName.match(/^H[1-6]$/)) {
                                 // Sanitize filename: remove special characters and replace spaces with underscores
-                                filename = `${prevSibling.innerText.trim().replace(/[^a-zA-Z0-9\sÀÁẠẢÃĂẰẮẶẲẴÂẦẤẬẨẪĐÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸàáạảãăằắặẳẵâầấậẩẫđèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹ]/g, '').replace(/\s+/g, '_').toLowerCase()}.csv`;
+                                filename = `${prevSibling.innerText.trim().replace(/[^a-zA-Z0-9\sÀÁẠẢÃĂẰẮẶẲẴÂẦẤẬẨẪĐÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸàáạảãăằắặẳẵâầấậẩẫđèéẹẻẽêềếệểễìííịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹ]/g, '').replace(/\s+/g, '_').toLowerCase()}.csv`;
                                 break;
                             }
                             prevSibling = prevSibling.previousElementSibling;
