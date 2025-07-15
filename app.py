@@ -10,111 +10,112 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 
-# --- Cấu hình Flask ---
+# --- Flask Configuration ---
 app = Flask(__name__)
-CORS(app) # Cho phép Cross-Origin Resource Sharing để frontend có thể gọi API
+CORS(app) # Enable Cross-Origin Resource Sharing for frontend to call API
 
-# --- Cấu hình Selenium WebDriver ---
+# --- Selenium WebDriver Configuration ---
 def get_chrome_driver():
-    """Khởi tạo và trả về một WebDriver Chrome sử dụng Selenium Manager tích hợp."""
+    """Initializes and returns a Chrome WebDriver using integrated Selenium Manager."""
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Chạy trình duyệt ẩn
-    chrome_options.add_argument("--disable-gpu") # Vô hiệu hóa GPU (cần thiết cho headless)
-    chrome_options.add_argument("--no-sandbox") # Vô hiệu hóa sandbox (cần thiết cho môi trường Linux/Docker)
-    chrome_options.add_argument("--disable-dev-shm-usage") # Giảm việc sử dụng /dev/shm (cần thiết cho Docker)
-    chrome_options.add_argument("--disable-extensions") # Vô hiệu hóa tiện ích mở rộng
-    chrome_options.add_argument("--disable-infobars") # Vô hiệu hóa thanh thông tin
-    chrome_options.add_argument("--remote-debugging-port=9222") # Cổng gỡ lỗi từ xa
-    chrome_options.add_argument("--window-size=1920,1080") # Đặt kích thước cửa sổ để mô phỏng màn hình lớn
-    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36") # Giả mạo User-Agent
-
-    # Selenium 4.6.0+ sẽ tự động quản lý driver khi Service() được gọi mà không có tham số
-    service = Service()
+    chrome_options.add_argument("--headless")  # Run browser in headless mode
+    chrome_options.add_argument("--disable-gpu") # Disable GPU (necessary for headless)
+    chrome_options.add_argument("--no-sandbox") # Disable sandbox (necessary for Linux/Docker environments)
+    chrome_options.add_argument("--disable-dev-shm-usage") # Reduce /dev/shm usage (necessary for Docker)
+    chrome_options.add_argument("--disable-extensions") # Disable extensions
+    chrome_options.add_argument("--disable-infobars") # Disable infobars
+    chrome_options.add_argument("--remote-debugging-port=9222") # Remote debugging port
+    chrome_options.add_argument("--window-size=1920,1080") # Set window size
+    
+    # Use Selenium Manager to automatically download and manage chromedriver
+    service = Service() 
     driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
 
-def get_page_full_text(url: str) -> str:
+def get_page_full_text(url):
     """
-    Sử dụng Selenium để tải một URL, chờ trang tải hoàn tất,
-    và trích xuất toàn bộ văn bản hiển thị từ phần thân trang.
+    Crawls the given URL using Selenium and extracts the full visible text content.
+    Handles dynamic content loaded by JavaScript.
     """
     driver = None
     try:
         driver = get_chrome_driver()
         driver.get(url)
-        
-        # Chờ cho đến khi document.readyState là 'complete'
-        WebDriverWait(driver, 20).until(
-            lambda d: d.execute_script('return document.readyState') == 'complete'
+        # Wait for the body element to be present, indicating the page has loaded
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
         
-        # Lấy toàn bộ mã nguồn HTML sau khi JavaScript đã thực thi
+        # Get the page source after dynamic content has loaded
         page_source = driver.page_source
         
-        # Phân tích cú pháp với BeautifulSoup
+        # Use BeautifulSoup to parse the HTML and extract text
         soup = BeautifulSoup(page_source, 'html.parser')
         
-        # Xóa các thẻ script và style để tránh lấy mã nguồn và CSS
-        for script_or_style in soup(["script", "style"]):
-            script_or_style.decompose()
+        # Remove script and style elements as they are not part of the visible text content
+        for script in soup(["script", "style"]):
+            script.extract()
         
-        # Lấy toàn bộ văn bản hiển thị từ phần thân trang
-        body_text = soup.body.get_text(separator=' ', strip=True)
+        text = soup.get_text()
         
-        # Giới hạn độ dài văn bản để tránh vượt quá giới hạn context của LLM
-        # Có thể điều chỉnh con số này tùy thuộc vào model và nhu cầu
-        max_text_length = 8000 # Giới hạn 8000 ký tự
-        if len(body_text) > max_text_length:
-            body_text = body_text[:max_text_length] + "..." # Cắt bớt và thêm dấu ba chấm
-            
-        return body_text
-            
+        # Clean up text:
+        # Break into lines and remove leading/trailing space on each line
+        lines = (line.strip() for line in text.splitlines())
+        # Break multi-headlines into a single line each (e.g., "Headline1\nHeadline2" becomes "Headline1 Headline2")
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        # Drop blank lines
+        text = '\n'.join(chunk for chunk in chunks if chunk)
+        
+        # Limit text length to avoid exceeding LLM context window limits
+        MAX_TEXT_LENGTH = 15000 # Increased limit for more comprehensive crawling
+        if len(text) > MAX_TEXT_LENGTH:
+            text = text[:MAX_TEXT_LENGTH] + "..." # Truncate and add ellipsis to indicate truncation
+        
+        return text
     except Exception as e:
-        print(f"Lỗi khi crawl URL: {url}: {e}")
-        return f"Không thể crawl nội dung từ {url}. Lỗi: {e}"
+        print(f"Error during crawl of {url}: {e}")
+        return f"Cannot crawl content: {e}"
     finally:
+        # Ensure the browser is closed even if an error occurs
         if driver:
-            driver.quit() # Đảm bảo đóng trình duyệt sau khi sử dụng
+            driver.quit()
 
-# --- Định nghĩa các API Endpoint ---
+# --- Define API Endpoints ---
 
 @app.route('/api/crawl_url', methods=['POST'])
 def handle_crawl_url():
     """
-    Endpoint API để frontend yêu cầu crawl một URL và trả về nội dung văn bản.
+    API endpoint for the frontend to request a URL crawl and return text content.
     Input: {"url": "https://example.com"}
-    Output: {"content": "Nội dung văn bản của trang..."} hoặc {"error": "..."}
+    Output: {"content": "Text content of the page..."} or {"error": "..."}
     """
     data = request.get_json()
     if not data or 'url' not in data:
-        return jsonify({"error": "Thiếu URL để crawl"}), 400
+        return jsonify({"error": "Missing URL to crawl"}), 400
 
     url = data['url']
-    print(f"Yêu cầu crawl URL: {url}")
+    print(f"Crawl request for URL: {url}")
     
     crawled_content = get_page_full_text(url)
     
-    if "Không thể crawl nội dung" not in crawled_content: # Kiểm tra chuỗi lỗi đơn giản
+    if "Cannot crawl content" not in crawled_content: # Simple check for error string
         return jsonify({"content": crawled_content})
     else:
         return jsonify({"error": crawled_content}), 500
 
-# --- Phục vụ các file tĩnh (Frontend) ---
+# --- Serve Static Files (Frontend) ---
 @app.route('/')
 def serve_index():
-    """Phục vụ file index.html làm trang chính."""
+    """Serves index.html as the main page."""
     return send_from_directory('.', 'index.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
-    """Phục vụ các file tĩnh khác nếu cần (ví dụ: CSS, JS riêng)."""
+    """Serves other static files if needed (e.g., separate CSS, JS)."""
     return send_from_directory('.', path)
 
 
 if __name__ == '__main__':
-    # Chạy ứng dụng Flask.
-    # host='0.0.0.0' để có thể truy cập từ mạng ngoài nếu cần.
-    # port lấy từ biến môi trường PORT hoặc mặc định là 5000.
-    # debug=True chỉ nên dùng trong môi trường phát triển.
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-
+    # Run the Flask app
+    # Use a specific host and port to be accessible from other containers/frontend
+    app.run(host='0.0.0.0', port=5000, debug=True)
