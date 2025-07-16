@@ -209,28 +209,6 @@
         </div>
     </div>
 
-    <!-- Receiver iframe section (initially in-flow, can be full-screen) -->
-    <div id="receiver-container" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 mt-4">
-        <!-- Header for in-flow mode -->
-        <div class="flex justify-between items-center mb-4 in-flow-header">
-            <h2 class="text-xl font-bold text-slate-800">Phân Tích Dữ Liệu</h2>
-            <button id="toggle-receiver-size-btn" class="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition text-sm flex items-center gap-1">
-                <svg id="maximize-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-maximize-2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>
-                <svg id="minimize-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-minimize-2 hidden"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" x2="21" y1="10" y2="3"/><line x1="3" x2="10" y1="21" y2="14"/></svg>
-                <span class="ml-1" id="toggle-button-text">Phóng to</span>
-            </button>
-        </div>
-
-        <!-- Header for fullscreen mode (initially hidden) -->
-        <div class="receiver-header hidden">
-            <h2 class="text-xl font-bold">Data Phin-ter</h2>
-            <button id="close-receiver-btn" class="text-white hover:text-gray-300">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-            </button>
-        </div>
-        <iframe id="receiver-iframe" src="https://data-phinter.onrender.com/" title="Receiver Host" class="w-full h-[500px] border-none rounded-lg"></iframe>
-    </div>
-
     <script type="module">
         const chatForm = document.getElementById('chat-form');
         const chatInput = document.getElementById('chat-input');
@@ -243,16 +221,6 @@
         const toggleKeysBtn = document.getElementById('toggle-keys-btn');
         const apiKeysSection = document.getElementById('api-keys-section');
         const researchModeSelect = document.getElementById('research-mode-select');
-
-        // New elements for receiver iframe control
-        const receiverContainer = document.getElementById('receiver-container');
-        const toggleReceiverSizeBtn = document.getElementById('toggle-receiver-size-btn');
-        const maximizeIcon = document.getElementById('maximize-icon');
-        const minimizeIcon = document.getElementById('minimize-icon');
-        const toggleButtonText = document.getElementById('toggle-button-text');
-        const receiverFullscreenHeader = receiverContainer.querySelector('.receiver-header'); // Get the fullscreen header
-        const inFlowHeader = receiverContainer.querySelector('.in-flow-header'); // Get the in-flow header
-        const receiverIframe = document.getElementById('receiver-iframe'); 
 
         let citationsData = []; // Array to store structured citation data
         let cau_thu = 0; // Counter for unique IDs, used for citation download button
@@ -1362,41 +1330,6 @@
                 renderMessage('Trình duyệt của bạn không hỗ trợ tải xuống CSV trực tiếp.', 'system_error');
             }
         }
-
-        // --- Event Listeners for Receiver iframe control ---
-        let isReceiverFullscreen = false; // Track the fullscreen state
-
-        toggleReceiverSizeBtn.addEventListener('click', () => {
-            isReceiverFullscreen = !isReceiverFullscreen;
-            if (isReceiverFullscreen) {
-                receiverContainer.classList.add('receiver-fullscreen');
-                maximizeIcon.classList.add('hidden');
-                minimizeIcon.classList.remove('hidden');
-                toggleButtonText.textContent = 'Thu nhỏ';
-                inFlowHeader.classList.add('hidden');
-                receiverFullscreenHeader.classList.remove('hidden');
-            } else {
-                receiverContainer.classList.remove('receiver-fullscreen');
-                maximizeIcon.classList.remove('hidden');
-                minimizeIcon.classList.add('hidden');
-                toggleButtonText.textContent = 'Phóng to';
-                inFlowHeader.classList.remove('hidden');
-                receiverFullscreenHeader.classList.add('hidden');
-            }
-            lucide.createIcons(); // Re-render icons after DOM manipulation
-        });
-
-        // Close button inside the fullscreen header
-        receiverFullscreenHeader.querySelector('#close-receiver-btn').addEventListener('click', () => {
-            isReceiverFullscreen = false; // Set to false to revert to normal size
-            receiverContainer.classList.remove('receiver-fullscreen');
-            maximizeIcon.classList.remove('hidden');
-            minimizeIcon.classList.add('hidden');
-            toggleButtonText.textContent = 'Phóng to';
-            inFlowHeader.classList.remove('hidden');
-            receiverFullscreenHeader.classList.add('hidden');
-            lucide.createIcons();
-        });
 
         // Initial icon render
         lucide.createIcons();
