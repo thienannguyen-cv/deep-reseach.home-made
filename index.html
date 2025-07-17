@@ -539,6 +539,8 @@
                         if (googleResults && googleResults.items) {
                             const urlsToCrawl = googleResults.items.slice(0, 3).map(item => item.link); // Limit URLs to crawl
                             for (const url of urlsToCrawl) {
+                                sourceCounter++;
+                                const currentSourceId = `S${sourceCounter}`;
                                 if (processedUrls.has(url)) {
                                     console.log(`URL đã được xử lý, bỏ qua: ${url}`);
                                     continue;
@@ -556,8 +558,6 @@
                                     continue; // Skip to the next URL
                                 }
 
-                                sourceCounter++;
-                                const currentSourceId = `S${sourceCounter}`;
                                 updateMessage(searchingMessage, `
                                     <div class="flex items-center gap-2">
                                         <i data-lucide="globe" class="w-4 h-4 text-slate-500"></i>
